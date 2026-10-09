@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>Virtualization Platform Review — Anonymized Case Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16130f; --page:#f5f2ec; --page2:#ece7de; --card:#ffffff; --rule:#ddd6c9; --muted:#7c7364; --soft:#5a5246;
+  --deep:#1a1510; --accent:#c0392b;
+  --vm:#c0392b; --prox:#1a6b3c; --azure:#1a4a7a; --azl:#4f7fb3; --win:#5a2d82;
+  --plat:#2a78d6; --desk:#eb6834; --vda:#4a3aa7; --hw:#1baf7a;
+  --good:#1a6b3c; --warn:#a86a00; --bad:#b0352a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:56px}
+body{background:var(--page);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--azure)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 40px}
+/* cover */
+.cover{background:var(--deep);color:#e9e3d8;border-bottom:3px solid var(--accent)}
+.cover .wrap{padding-top:56px;padding-bottom:44px}
+.meta{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#d0675b;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-family:'Fraunces',serif;font-weight:700;font-size:42px;line-height:1.08;color:#fff;max-width:760px;margin-bottom:14px}
+.lede{font-size:16px;color:#b9b0a1;max-width:720px;margin-bottom:34px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)}
+.stat{background:var(--deep);padding:16px 18px}
+.stat-v{font-family:'Fraunces',serif;font-size:28px;font-weight:600;color:#fff;line-height:1.1}
+.stat-v.hl{color:#c9a8ef}
+.stat-l{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#8f8676;margin-top:6px}
+.stat-s{font-size:12.5px;color:#7d7466;margin-top:2px}
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:var(--deep);border-bottom:1px solid #2c2620}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav a{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9a9182;text-decoration:none;padding:14px 12px;border-bottom:2px solid transparent;white-space:nowrap}
+nav a:hover,nav a:focus-visible,nav a.on{color:#fff;border-color:var(--accent);outline:none}
+/* sections */
+section{padding:56px 0;border-bottom:1px solid var(--rule)}
+section:last-of-type{border-bottom:none}
+.eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+h2{font-family:'Fraunces',serif;font-size:30px;font-weight:600;line-height:1.15;color:var(--deep);margin-bottom:10px}
+h3{font-family:'Fraunces',serif;font-size:19px;font-weight:600;color:var(--deep);margin:28px 0 10px}
+.deck{font-size:16px;color:var(--soft);max-width:760px;margin-bottom:26px}
+p+p{margin-top:10px}
+.small{font-size:13px;color:var(--muted)}
+/* tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-family:'DM Mono',monospace;font-weight:400;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#d8d0c2;background:var(--deep);text-align:left;padding:11px 12px;white-space:nowrap}
+td{padding:10px 12px;border-top:1px solid var(--rule);vertical-align:top}
+td:first-child{min-width:190px} td.l{min-width:130px}
+.num td,.num th{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.num td:first-child,.num td.l{white-space:normal}
+.num td:first-child,.num th:first-child,.num td.l,.num th.l{text-align:left}
+td.tot{font-weight:600}
+tr.rec td{background:#f6f0fb}
+tr.sub td{background:var(--page2);font-weight:600}
+tr.grp td{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:var(--page)}
+.grp-vm td{color:var(--vm)} .grp-prox td{color:var(--prox)} .grp-azure td{color:var(--azure)} .grp-azl td{color:var(--azl)} .grp-win td{color:var(--win)}
+td.vs{color:var(--good);white-space:nowrap} td.vs.neg{color:var(--bad)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px;vertical-align:1px}
+.dot-vm{background:var(--vm)} .dot-prox{background:var(--prox)} .dot-azure{background:var(--azure)} .dot-azl{background:var(--azl)} .dot-win{background:var(--win)}
+.pill{display:inline-block;font-family:'DM Mono',monospace;font-size:10.5px;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.p-bad{background:rgba(176,53,42,.1);color:var(--bad)} .p-warn{background:rgba(168,106,0,.11);color:var(--warn)} .p-good{background:rgba(26,107,60,.1);color:var(--good)}
+/* callouts */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}
+.note{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:14px 16px}
+.note.blue{border-left-color:var(--azure)} .note.green{border-left-color:var(--good)} .note.amber{border-left-color:var(--warn)}
+.note b{display:block;font-size:14px;color:var(--deep);margin-bottom:3px}
+.note span{font-size:13.5px;color:var(--soft)}
+/* requirements */
+.req{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;counter-reset:req}
+.req div{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:14px;font-size:13.5px;color:var(--soft);counter-increment:req}
+.req div::before{content:counter(req);display:block;font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--accent);margin-bottom:4px}
+.req b{color:var(--deep);display:block;margin-bottom:2px}
+/* options */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.card.rec{border-color:#b9a0d6;box-shadow:0 0 0 1px #b9a0d6}
+.bar{height:4px}
+.bar-vm{background:var(--vm)} .bar-prox{background:var(--prox)} .bar-azure{background:linear-gradient(90deg,var(--azure) 50%,var(--azl) 50%)} .bar-win{background:var(--win)}
+.card-h{padding:18px 20px 12px;border-bottom:1px solid var(--rule)}
+.tag{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.card-h h3{margin:4px 0 4px;font-size:20px}
+.card-h p{font-size:13.5px;color:var(--soft)}
+.card-b{padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px;flex:1}
+dl{display:grid;grid-template-columns:120px 1fr;gap:8px 14px;font-size:13.5px}
+dt{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+dd{color:var(--ink)}
+.cs{background:var(--page);border:1px solid var(--rule);border-radius:4px;padding:10px 12px}
+.cs-row{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:3px 0;color:var(--soft)}
+.cs-row span:last-child{font-family:'DM Mono',monospace;color:var(--ink);white-space:nowrap}
+.cs-total{border-top:1px solid var(--rule);margin-top:5px;padding-top:7px;font-weight:600;color:var(--deep)}
+.cs-total span:last-child{font-family:'Fraunces',serif;font-size:18px;font-weight:700}
+.card.vm .cs-total span:last-child{color:var(--vm)} .card.prox .cs-total span:last-child{color:var(--prox)} .card.azure .cs-total span:last-child{color:var(--azure)} .card.win .cs-total span:last-child{color:var(--win)}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pc ul{list-style:none;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.pc li{display:flex;gap:7px;line-height:1.45}
+.pros li::before{content:'+';color:var(--good);font-weight:700;font-family:'DM Mono',monospace}
+.cons li::before{content:'−';color:var(--bad);font-weight:700;font-family:'DM Mono',monospace}
+.pc h4{font-family:'DM Mono',monospace;font-weight:400;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.variant{border-top:1px dashed var(--rule);padding-top:12px}
+/* chart */
+.chart{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:20px 22px 18px;margin-bottom:22px}
+.chart h3{margin:0 0 2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:12px 0 16px;font-size:12.5px;color:var(--soft)}
+.lg{display:inline-flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+.sw-plat,.seg-plat{background:var(--plat)} .sw-desk,.seg-desk{background:var(--desk)} .sw-vda,.seg-vda{background:var(--vda)} .sw-hw,.seg-hw{background:var(--hw)}
+.crow{display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:center;padding:7px 0}
+.clabel{display:flex;flex-direction:column;line-height:1.25}
+.cname{font-size:13.5px;font-weight:500;color:var(--ink)}
+.cval{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.ctrack{display:flex;height:26px}
+.seg{display:flex;align-items:center;justify-content:center;height:100%;border-right:2px solid var(--card);min-width:3px;cursor:default;outline:none}
+.seg.first{border-radius:4px 0 0 4px} .seg.last{border-radius:0 4px 4px 0;border-right:none} .seg.first.last{border-radius:4px}
+.seg:hover,.seg:focus-visible{filter:brightness(1.08);box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.seg-lab{font-family:'DM Mono',monospace;font-size:11px;color:#fff;pointer-events:none;white-space:nowrap}
+.seg-hw .seg-lab{color:#0b2b20}
+.axis{display:grid;grid-template-columns:250px 1fr;gap:14px;margin-top:6px}
+.axis-t{position:relative;height:16px;border-top:1px solid var(--rule)}
+.axis-t span:first-child{transform:none}
+.axis-t span{position:absolute;top:3px;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:10.5px;color:var(--muted)}
+.tip{position:fixed;z-index:99;pointer-events:none;background:var(--deep);color:#f3eee6;font-size:12.5px;padding:7px 10px;border-radius:4px;opacity:0;transition:opacity .12s;max-width:280px}
+details{margin-top:18px}
+summary{cursor:pointer;font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--azure);padding:6px 0}
+details .tbl-wrap{margin-top:10px}
+/* timeline */
+.tl{list-style:none;border-left:2px solid var(--rule);margin-left:6px;display:flex;flex-direction:column;gap:18px}
+.tl li{position:relative;padding-left:22px}
+.tl li::before{content:'';position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--page);border:2px solid var(--accent)}
+.tl .when{font-family:'DM Mono',monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.tl b{display:block;color:var(--deep);font-size:15px}
+.tl span{font-size:13.5px;color:var(--soft)}
+.two{display:grid;grid-template-columns:1.05fr 1fr;gap:36px;align-items:start}
+.outlook{display:flex;flex-direction:column;gap:10px}
+.ol{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;font-size:13.5px;color:var(--soft)}
+.ol b{color:var(--deep)}
+/* recommendation */
+.recbox{background:var(--deep);color:#e9e3d8;border-radius:8px;padding:34px 36px}
+.recbox .eyebrow{color:#c9a8ef}
+.recbox h2{color:#fff;margin-bottom:6px}
+.recbox .deck{color:#b9b0a1;margin-bottom:22px}
+.rstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.rstat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:14px 16px}
+.rstat-v{font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:#c9a8ef}
+.rstat-l{font-size:12.5px;color:#91887a}
+.recbox p{font-size:14.5px;color:#c7bfb1}
+.recbox p b{color:#fff}
+.recbox ol{margin:10px 0 0 20px;font-size:14px;color:#c7bfb1;display:flex;flex-direction:column;gap:6px}
+.recbox h4{font-family:'DM Mono',monospace;font-weight:400;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8f8676;margin:22px 0 4px}
+footer{background:var(--deep);color:#7d7466;font-size:12.5px;padding:28px 0}
+footer b{color:#a39a8b}
+@media (max-width:900px){
+  .wrap{padding:0 18px}
+  h1{font-size:30px} h2{font-size:25px}
+  .stats{grid-template-columns:1fr 1fr}
+  .trio,.cards,.two,.rstats,.pc{grid-template-columns:1fr}
+  .req{grid-template-columns:1fr 1fr}
+  .crow,.axis{grid-template-columns:1fr;gap:4px}
+  .axis>div:first-child{display:none}
+  dl{grid-template-columns:1fr} dt{padding-top:0}
+  .recbox{padding:26px 20px}
+}
+@media print{
+  nav{display:none} section{break-inside:avoid-page} details{display:block} details>*{display:block}
+  .card,.chart,.tbl-wrap{break-inside:avoid}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+.l{text-align:left}
+.score td,.score th{text-align:left;white-space:normal}
+.score td:first-child{font-weight:500;color:var(--deep);min-width:150px}
+.score th.rec,.score td.rec{background:#f6f0fb}
+.score th.rec{background:#3a2552}
+.yes{color:var(--good);font-weight:600}
+.mid{color:var(--warn)}
+.cum{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden;margin-top:14px}
+.cum div{background:var(--card);padding:10px 12px;font-size:12.5px;color:var(--soft)}
+.cum b{display:block;font-family:'DM Mono',monospace;font-size:13px;color:var(--ink);font-weight:500}
+.ruled{margin-top:18px}
+.diagram{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:18px 18px 14px;margin:22px 0 0;color:var(--ink)}
+.diagram .scroll{overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:720px;height:auto}
+.diagram figcaption{font-size:13px;color:var(--muted);margin-top:10px;max-width:880px}
+.cs-head{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--azure);padding:2px 0 6px;border-bottom:1px solid var(--rule);margin-bottom:5px}
+@media (max-width:900px){.cum{grid-template-columns:1fr 1fr}.cum div:last-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <div class="wrap">
+    <div class="meta"><span>Anonymized case study</span><span>Portfolio edition</span><span>Prices checked Oct 2026</span></div>
+    <h1>Virtualization Platform: Five-Year Cost and Risk Review</h1>
+    <p class="lede">The organization's VMware licenses were expiring, and renewing meant moving to Broadcom's per-core subscription. This review decides where 240 personal Windows desktops and 40 server VMs run next. It holds VMware and four alternatives to the same six requirements and costs each one's most efficient five-year route.</p>
+    <div class="stats">
+      <div class="stat"><div class="stat-v">17 / 480</div><div class="stat-l">Hosts / physical cores</div><div class="stat-s">All on-site, one building</div></div>
+      <div class="stat"><div class="stat-v">10 of 17</div><div class="stat-l">Hosts past vendor support</div><div class="stat-s">HPE Gen9, support ended 2025</div></div>
+      <div class="stat"><div class="stat-v">240 + 40</div><div class="stat-l">Personal desktops + server VMs</div><div class="stat-s">Teams calls are essential</div></div>
+      <div class="stat"><div class="stat-v hl">$452,440</div><div class="stat-l">Recommended, 5 years</div><div class="stat-s">Hyper-V + Horizon · $138,041 less than VMware</div></div>
+    </div>
+  </div>
+</header>
+
+<nav aria-label="Sections"><div class="wrap">
+  <a href="#today">Where we are</a><a href="#requirements">Requirements</a><a href="#options">Options</a><a href="#costs">Costs</a><a href="#outlook">Looking ahead</a><a href="#recommendation">Recommendation</a><a href="#assumptions">Assumptions</a>
+</div></nav>
+
+<main>
+<section id="today"><div class="wrap">
+  <div class="eyebrow">1 · Where we are</div>
+  <h2>17 hosts, 10 of them past vendor support</h2>
+  <p class="deck">Everything runs on VMware vSphere with Omnissa Horizon for desktops. At work, each thin client connects straight to its user's VM. From home, users open the Horizon web portal on a personal computer and sign in with Duo.</p>
+  <div class="tbl-wrap"><table class="num">
+    <thead><tr><th>Host group</th><th>Hosts</th><th>CPUs × cores</th><th>Cores</th><th>RAM / host</th><th class="l">Runs today</th><th class="l">Vendor support</th><th class="l">Plan (on-site options)</th></tr></thead>
+    <tbody>
+      <tr><td>HPE DL360 Gen9 · 2× Xeon E5-2640 v3 (2014)</td><td>4</td><td>2 × 8</td><td>64</td><td>256 GB</td><td class="l">Servers · ESXi 7.0.3</td><td class="l"><span class="pill p-bad">Ended Jul 2025</span></td><td class="l">Retire in Year 1</td></tr>
+      <tr><td>HPE DL380 Gen9 · 2× Xeon E5-2680 v3 (2014)</td><td>2</td><td>2 × 12</td><td>48</td><td>256 GB</td><td class="l">Servers · ESXi 7.0.3</td><td class="l"><span class="pill p-bad">Ended Jul 2025</span></td><td class="l">Retire in Year 1</td></tr>
+      <tr><td>HPE DL380 Gen9 · 2× Xeon E5-2650 v4 (2016)</td><td>3</td><td>2 × 12</td><td>72</td><td>256 GB</td><td class="l">Servers · ESXi 7.0.3</td><td class="l"><span class="pill p-bad">Ended Jul 2025</span></td><td class="l">Retire in Year 1</td></tr>
+      <tr><td>HPE DL360 Gen9 · 1× Xeon E5-2620 v4 (2016)</td><td>1</td><td>1 × 8</td><td>8</td><td>256 GB</td><td class="l">Servers · ESXi 7.0.3</td><td class="l"><span class="pill p-bad">Ended Jul 2025</span></td><td class="l">Retire in Year 1</td></tr>
+      <tr><td>HPE DL380 Gen10 · 2× Xeon Gold 6130 (2017)</td><td>2</td><td>2 × 16</td><td>64</td><td>384 GB</td><td class="l">Servers · ESXi 7.0.3</td><td class="l"><span class="pill p-warn">Ends Mar 2028</span></td><td class="l">Keep to Year 2</td></tr>
+      <tr><td>Lenovo SR650 · 2× Xeon Gold 5218R (2020)</td><td>2</td><td>2 × 20</td><td>80</td><td>512 GB</td><td class="l">Desktops · ESXi 7.0.3</td><td class="l"><span class="pill p-warn">Ends Apr–Jun 2028</span></td><td class="l">Keep one to Year 2</td></tr>
+      <tr><td>Lenovo SR650 V3 · 2× Xeon Gold 6542Y (2023)</td><td>3</td><td>2 × 24</td><td>144</td><td>1 TB</td><td class="l">Desktops · ESXi 8</td><td class="l"><span class="pill p-good">Beyond 2031</span></td><td class="l">Keep</td></tr>
+      <tr class="sub"><td>Total</td><td>17</td><td>33 sockets</td><td>480</td><td>—</td><td class="l" colspan="3">40 server VMs on 12 hosts · 240 desktops on 5 hosts · 16 TB on the SAN</td></tr>
+    </tbody>
+  </table></div>
+  <div class="trio">
+    <div class="note"><b>Every path is a new purchase</b><span>The VMware licenses are expiring, so staying means buying Broadcom's per-core subscription. Ten Gen9 hosts can't run a supported ESXi, and the 14 hosts on ESXi 7.0.3 left general support on 2 Oct 2025.</span></div>
+    <div class="note amber"><b>Four more hosts age out in spring 2028</b><span>The Gen10 and SR650 hosts reach end of service between March and June 2028, inside the five-year window, so every option replaces or retires them.</span></div>
+    <div class="note blue"><b>Two gaps to close in any option</b><span>The SAN's 16 TB is nearly full, so every option plans for 32 TB. Windows VDA, which on-site desktops need, isn't licensed today.</span></div>
+  </div>
+</div></section>
+
+<section id="requirements"><div class="wrap">
+  <div class="eyebrow">2 · Requirements</div>
+  <h2>Every option delivers the same six things</h2>
+  <p class="deck">Options are only comparable if they do the same job. Each one meets all six requirements, and whatever it needs to get there, including third-party software and hardware, is in its cost.</p>
+  <div class="req" style="grid-template-columns:repeat(3,1fr)">
+    <div><b>Own desktop</b>Each of 240 users keeps a personal Windows 11 VM (232 assigned, 8 floating).</div>
+    <div><b>Thin clients</b>At work, the existing thin clients connect straight to the user's VM.</div>
+    <div><b>Home access</b>A web portal on a personal computer, with Duo sign-in.</div>
+    <div><b>Optimized Teams calls</b>Audio and video handled on the endpoint, not inside the VM. Users rely on Teams heavily.</div>
+    <div><b>Servers and storage</b>40 server VMs, highly available, with 32 TB usable for all VMs (double today's 16 TB).</div>
+    <div><b>Supported hardware</b>Vendor-supported for all five years, with capacity to lose one host.</div>
+  </div>
+
+  <figure class="diagram">
+    <div class="scroll">
+    <svg viewBox="0 0 1000 440" role="img" aria-label="Users reach their own Windows 11 VM through a desktop broker; home users pass a Duo-protected portal first; Teams audio and video go from the device straight to Microsoft 365; desktops and servers share one host cluster and one storage pool.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.2">
+        <!-- cluster -->
+        <rect x="560" y="104" width="420" height="300" rx="10" stroke-dasharray="5 4" opacity=".55"/>
+        <!-- boxes -->
+        <rect x="20" y="150" width="190" height="70" rx="6" fill="#fff"/>
+        <rect x="20" y="300" width="190" height="70" rx="6" fill="#fff"/>
+        <rect x="290" y="150" width="190" height="70" rx="6" fill="#fff"/>
+        <rect x="290" y="300" width="190" height="70" rx="6" fill="#fff"/>
+        <rect x="290" y="24" width="190" height="62" rx="6" fill="#fff"/>
+        <rect x="585" y="150" width="170" height="110" rx="6" fill="#fff"/>
+        <rect x="805" y="150" width="150" height="110" rx="6" fill="#fff"/>
+        <rect x="585" y="300" width="370" height="64" rx="6" fill="#fff"/>
+      </g>
+      <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#ah)">
+        <line x1="210" y1="185" x2="287" y2="185"/>
+        <line x1="210" y1="335" x2="287" y2="335"/>
+        <line x1="385" y1="300" x2="385" y2="223"/>
+        <line x1="480" y1="185" x2="582" y2="185"/>
+        <line x1="755" y1="205" x2="802" y2="205"/>
+        <line x1="670" y1="260" x2="670" y2="297"/>
+        <line x1="880" y1="260" x2="880" y2="297"/>
+      </g>
+      <polyline points="115,150 115,55 286,55" fill="none" stroke="#c0392b" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#ahr)"/>
+      <g fill="currentColor" font-size="13">
+        <text x="115" y="180" text-anchor="middle" font-weight="600">Thin clients at work</text>
+        <text x="115" y="200" text-anchor="middle" font-size="12" opacity=".75">240 devices</text>
+        <text x="115" y="330" text-anchor="middle" font-weight="600">Personal PC at home</text>
+        <text x="115" y="350" text-anchor="middle" font-size="12" opacity=".75">web browser</text>
+        <text x="385" y="180" text-anchor="middle" font-weight="600">Desktop broker</text>
+        <text x="385" y="200" text-anchor="middle" font-size="12" opacity=".75">finds each user's VM</text>
+        <text x="385" y="330" text-anchor="middle" font-weight="600">Home-access portal</text>
+        <text x="385" y="350" text-anchor="middle" font-size="12" opacity=".75">Duo sign-in</text>
+        <text x="385" y="51" text-anchor="middle" font-weight="600">Microsoft 365</text>
+        <text x="385" y="70" text-anchor="middle" font-size="12" opacity=".75">Teams, Office, email</text>
+        <text x="670" y="198" text-anchor="middle" font-weight="600">240 Windows 11</text>
+        <text x="670" y="216" text-anchor="middle" font-weight="600">desktops</text>
+        <text x="670" y="236" text-anchor="middle" font-size="12" opacity=".75">one VM per user</text>
+        <text x="880" y="198" text-anchor="middle" font-weight="600">40 server VMs</text>
+        <text x="880" y="218" text-anchor="middle" font-size="12" opacity=".75">sign-in, file shares,</text>
+        <text x="880" y="234" text-anchor="middle" font-size="12" opacity=".75">business apps</text>
+        <text x="770" y="330" text-anchor="middle" font-weight="600">Shared storage · 32 TB usable</text>
+        <text x="770" y="349" text-anchor="middle" font-size="12" opacity=".75">every VM's disk lives here</text>
+        <text x="770" y="128" text-anchor="middle" font-size="12" opacity=".75">Host cluster · keeps running if one host fails</text>
+        <!-- arrow labels -->
+        <text x="249" y="177" text-anchor="middle" font-size="11.5" opacity=".8">sign in</text>
+        <text x="249" y="327" text-anchor="middle" font-size="11.5" opacity=".8">opens site</text>
+        <text x="392" y="266" font-size="11.5" opacity=".8">after Duo</text>
+        <text x="520" y="163" text-anchor="middle" font-size="11.5" opacity=".8">connects to</text>
+        <text x="520" y="177" text-anchor="middle" font-size="11.5" opacity=".8">own VM</text>
+        <text x="779" y="197" text-anchor="middle" font-size="11.5" opacity=".8">uses</text>
+        <text x="678" y="284" font-size="11.5" opacity=".8">disks</text>
+        <text x="888" y="284" font-size="11.5" opacity=".8">disks</text>
+        <text x="124" y="46" font-size="11.5" fill="#c0392b">Teams calls, direct</text>
+      </g>
+      <!-- requirement badges -->
+      <g font-size="11" font-weight="700" text-anchor="middle">
+        <circle cx="198" cy="150" r="10" fill="#c0392b"/><text x="198" y="154" fill="#fff">2</text>
+        <circle cx="198" cy="300" r="10" fill="#c0392b"/><text x="198" y="304" fill="#fff">3</text>
+        <circle cx="468" cy="300" r="10" fill="#c0392b"/><text x="468" y="304" fill="#fff">3</text>
+        <circle cx="286" cy="55" r="0"/>
+        <circle cx="105" cy="100" r="10" fill="#c0392b"/><text x="105" y="104" fill="#fff">4</text>
+        <circle cx="743" cy="150" r="10" fill="#c0392b"/><text x="743" y="154" fill="#fff">1</text>
+        <circle cx="943" cy="150" r="10" fill="#c0392b"/><text x="943" y="154" fill="#fff">5</text>
+        <circle cx="943" cy="300" r="10" fill="#c0392b"/><text x="943" y="304" fill="#fff">5</text>
+        <circle cx="968" cy="104" r="10" fill="#c0392b"/><text x="968" y="108" fill="#fff">6</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>How the pieces fit. Users reach their own Windows 11 VM through a desktop broker; home users pass a Duo-protected portal first. Teams call audio and video go from the device straight to Microsoft 365 instead of through the VM. Desktops and servers share one host cluster and one storage pool. Red numbers match the requirements above. In the on-site options the broker and portal are Horizon; in the Azure options they're Azure Virtual Desktop.</figcaption>
+  </figure>
+  <div class="note blue ruled"><b>Ruled out: Microsoft RDS and free or low-cost RDP portals</b><span>Microsoft's Teams optimization supports Azure Virtual Desktop, Windows 365, Citrix, Omnissa Horizon and Amazon WorkSpaces, not plain RDP. Remote Desktop Services, UDS Enterprise and Apache Guacamole would leave every call running inside the VM, so Hyper-V and Proxmox keep Horizon as the broker instead.</span></div>
+
+  <h3>Hardware plan</h3>
+  <p class="small" style="max-width:840px;margin-bottom:12px">The on-site options run the same workload (664 vCPU and 2.6 TB of RAM), so they share one plan. Desktops are sized at 2 vCPU / 8 GB and servers at 4 vCPU / 16 GB on average. The sizing is deliberately lean, matching how the environment runs today.</p>
+  <div class="tbl-wrap"><table class="num">
+    <thead><tr><th>Option and period</th><th class="l">Hosts in service</th><th>Cores</th><th>RAM</th><th>RAM used*</th><th>vCPU / core*</th><th class="l">Storage</th><th>Purchase</th></tr></thead>
+    <tbody>
+      <tr><td>VMware, Proxmox, Hyper-V · Year 1</td><td class="l">2 Gen10 · 1 SR650 · 3 SR650 V3</td><td>248</td><td>4.2 TB</td><td>89%</td><td>3.3</td><td class="l">SAN, 32 TB</td><td>$20,200</td></tr>
+      <tr><td>VMware, Proxmox, Hyper-V · Year 2 on</td><td class="l">3 SR650 V3 · 2 new hosts (768 GB)</td><td>240</td><td>4.5 TB</td><td>82%</td><td>3.5</td><td class="l">SAN, 32 TB</td><td>$90,000</td></tr>
+      <tr><td>AVD on Azure Local · all years</td><td class="l">3 SR650 V3 · 2 new nodes, one cluster for desktops and servers</td><td>240</td><td>4.5 TB</td><td>85%</td><td>3.4</td><td class="l">Local NVMe, 38.4 TB</td><td>$214,000</td></tr>
+      <tr><td>AVD in the cloud · all years</td><td class="l">3 SR650 V3 for servers; desktops in Azure</td><td>144</td><td>3 TB</td><td>37%</td><td>1.8</td><td class="l">Local drives, 11.5 TB</td><td>$40,200</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small" style="margin-top:10px;max-width:880px">* With the largest host down. Year 1 keeps six hosts because five would need 105% of RAM with one down. Azure Local needs five nodes, because four would need 108%, and seven 3.84 TB drives per node to reach 32 TB usable with three-way mirroring. Both Azure options retire the SAN: Azure Local stores everything on its own drives, and cloud AVD moves desktops to Azure and puts the servers on the hosts' own drives (Storage Spaces Direct, part of the owned Datacenter licenses). The Year-1 clusters mix three CPU generations, so live migration runs in processor compatibility mode until Year 2. All host cores running Windows Server stay within the 264 Datacenter core licenses already owned. The on-site options reuse the existing network.</p>
+</div></section>
+
+<section id="options"><div class="wrap">
+  <div class="eyebrow">3 · Options</div>
+  <h2>Four ways to meet the requirements</h2>
+  <p class="deck">Each card shows how desktops and home access work, what has to be licensed, and the five-year cost; the Costs section lists every rate. On-site desktops need Windows VDA per thin client; Microsoft 365 Business Premium covers it only for desktops running in Azure or on Azure Local.</p>
+  <div class="cards">
+
+    <article class="card vm">
+      <div class="bar bar-vm"></div>
+      <div class="card-h"><span class="tag">Today's platform</span><h3>VMware (stay)</h3><p>New Broadcom vSphere subscription, with Horizon Enterprise renewed.</p></div>
+      <div class="card-b">
+        <dl>
+          <dt>Desktops</dt><dd>Horizon Enterprise, unchanged, with automated pools and power management.</dd>
+          <dt>Home access</dt><dd>Horizon portal through Unified Access Gateway with Duo, as today.</dd>
+          <dt>Platform</dt><dd>vSphere at a $110-per-core bundle estimate on 248 cores, then 240. Must reach vSphere 9 before vSphere 8 support ends on 11 Oct 2027; the Gen10 hosts run it only in Broadcom's best-effort "deprecated mode" until they're replaced.</dd>
+        </dl>
+        <div class='cs'><div class='cs-row'><span>Windows Server CALs</span><span>$11,568</span></div><div class='cs-row'><span>Windows Server Datacenter (owned)</span><span>$0</span></div><div class='cs-row'><span>vSphere subscription</span><span>$141,041</span></div><div class='cs-row'><span>Horizon Enterprise</span><span>$163,759</span></div><div class='cs-row'><span>Windows VDA</span><span>$163,913</span></div><div class='cs-row'><span>SAN expansion</span><span>$20,200</span></div><div class='cs-row'><span>2 new hosts (Year 2)</span><span>$90,000</span></div><div class='cs-row cs-total'><span>5-year total</span><span>$590,481</span></div></div>
+        <div class="pc"><div><h4>Strengths</h4><ul class="pros"><li>No migration or retraining</li><li>Fully automated desktop management</li></ul></div>
+        <div><h4>Risks</h4><ul class="cons"><li>Highest on-site cost; quote-only pricing</li><li>Three subscriptions: Broadcom, Omnissa, Microsoft VDA</li></ul></div></div>
+      </div>
+    </article>
+
+    <article class="card prox">
+      <div class="bar bar-prox"></div>
+      <div class="card-h"><span class="tag">Option A · Open source</span><h3>Proxmox VE + Horizon</h3><p>Open-source hypervisor priced per socket, with Horizon kept as the broker.</p></div>
+      <div class="card-b">
+        <dl>
+          <dt>Desktops</dt><dd>Personal Windows 11 VMs on Proxmox in a Horizon manual pool. Thin clients keep the Horizon client; Teams stays optimized.</dd>
+          <dt>Home access</dt><dd>Horizon portal through Unified Access Gateway with Duo, as today.</dd>
+          <dt>Platform</dt><dd>Proxmox VE Standard on 12 sockets, then 10. Certified under Omnissa's Horizon Ready program in Sept 2026, in manual mode.</dd>
+        </dl>
+        <div class='cs'><div class='cs-row'><span>Windows Server CALs</span><span>$11,568</span></div><div class='cs-row'><span>Windows Server Datacenter (owned)</span><span>$0</span></div><div class='cs-row'><span>Proxmox VE subscription</span><span>$34,845</span></div><div class='cs-row'><span>Horizon Enterprise</span><span>$163,759</span></div><div class='cs-row'><span>Windows VDA</span><span>$163,913</span></div><div class='cs-row'><span>SAN expansion</span><span>$20,200</span></div><div class='cs-row'><span>2 new hosts (Year 2)</span><span>$90,000</span></div><div class='cs-row'><span>Training</span><span>$4,000</span></div><div class='cs-row cs-total'><span>5-year total</span><span>$488,285</span></div></div>
+        <div class="pc"><div><h4>Strengths</h4><ul class="pros"><li>Certified for Horizon</li><li>Users notice no change</li><li>Lowest platform fee</li></ul></div>
+        <div><h4>Risks</h4><ul class="cons"><li>Manual pools: no automated provisioning or power management</li><li>Linux skills for a one-person team</li><li>SAN snapshots are a technology preview</li></ul></div></div>
+      </div>
+    </article>
+
+    <article class="card azure">
+      <div class="bar bar-azure"></div>
+      <div class="card-h"><span class="tag">Options B1 and B2 · Microsoft</span><h3>Azure Virtual Desktop</h3><p>Microsoft's desktop service, on a certified Azure Local cluster on-site (B2) or in Azure (B1).</p></div>
+      <div class="card-b">
+        <dl>
+          <dt>Desktops</dt><dd>240 personal desktops, started when a user connects. Teams optimization is built in. Business Premium covers Windows, so no VDA.</dd>
+          <dt>Home access</dt><dd>Windows App in the browser, signing in through Entra ID with Duo as external MFA.</dd>
+          <dt>B2 · Azure Local</dt><dd>One five-node cluster (3 SR650 V3 plus 2 new nodes, 35 NVMe drives, 2 switches) runs desktops and servers; the SAN and older hosts retire in Year 1. Every login is brokered by the AVD service in Azure, so a backup internet line is included.</dd>
+          <dt>B1 · Cloud</dt><dd>Desktops and their storage move to Azure over a VPN. The SAN retires; the 40 servers stay on the three SR650 V3 using their own drives. Needs a second internet circuit.</dd>
+        </dl>
+        <div class='cs'><div class='cs-head'>B2 · AVD on Azure Local</div><div class='cs-row'><span>Windows Server CALs (241 × $48)</span><span>$11,568</span></div><div class='cs-row'><span>Windows Server Datacenter (owned)</span><span>$0</span></div><div class='cs-row'><span>Azure Local host fee (240 cores × $10/mo)</span><span>$152,904</span></div><div class='cs-row'><span>AVD service fee (480 vCPU × $0.01/h, 12 h × 22 days a month)</span><span>$80,732</span></div><div class='cs-row'><span>Azure monitoring (~$1,000/yr)</span><span>$5,310</span></div><div class='cs-row'><span>Backup internet line (~$500/mo)</span><span>$31,854</span></div><div class='cs-row'><span>2 new nodes ($45,000 each)</span><span>$90,000</span></div><div class='cs-row'><span>NVMe drives (35 × 3.84 TB at $2,600)</span><span>$91,000</span></div><div class='cs-row'><span>Network cards and switches (3 × $3,000 + 2 switches)</span><span>$33,000</span></div><div class='cs-row'><span>Training</span><span>$9,000</span></div><div class='cs-row cs-total'><span>B2 five-year total</span><span>$505,368</span></div></div>
+        <div class='cs'><div class='cs-head'>B1 · AVD in the cloud</div><div class='cs-row'><span>Windows Server CALs (241 × $48)</span><span>$11,568</span></div><div class='cs-row'><span>Windows Server Datacenter (owned)</span><span>$0</span></div><div class='cs-row'><span>Desktop VMs (240 × D2s_v5 at $0.096/h, 12 h × 22 days a month)</span><span>$387,518</span></div><div class='cs-row'><span>Desktop disks (240 × 128 GB at $19.71/mo)</span><span>$301,372</span></div><div class='cs-row'><span>VPN gateway ($0.49/h, always on)</span><span>$22,788</span></div><div class='cs-row'><span>Data egress (13.5 GB per user a month at $0.087/GB)</span><span>$17,959</span></div><div class='cs-row'><span>Azure operations (~$3,000/yr)</span><span>$15,928</span></div><div class='cs-row'><span>Second internet line (~$1,000/mo)</span><span>$63,710</span></div><div class='cs-row'><span>Server-host drives (12 × 3.84 TB + 3 network cards)</span><span>$40,200</span></div><div class='cs-row'><span>Training</span><span>$6,000</span></div><div class='cs-row cs-total'><span>B1 five-year total</span><span>$867,043</span></div></div>
+        <div class="pc"><div><h4>Strengths</h4><ul class="pros"><li>Microsoft end to end; no VDA or Horizon</li><li>B2: lowest yearly cost once bought</li></ul></div>
+        <div><h4>Risks</h4><ul class="cons"><li>New client and portal for users</li><li>B2: $285,574 in Year 1; logins need the internet</li><li>Org sits near Business Premium's 300-seat cap</li></ul></div></div>
+      </div>
+    </article>
+
+    <article class="card win rec">
+      <div class="bar bar-win"></div>
+      <div class="card-h"><span class="tag">Option C · Recommended ★</span><h3>Hyper-V + Horizon</h3><p>Windows Server licenses already owned, with Horizon kept as the broker.</p></div>
+      <div class="card-b">
+        <dl>
+          <dt>Desktops</dt><dd>Personal Windows 11 VMs on Hyper-V in a Horizon manual pool, a setup Omnissa documents for Hyper-V (manual provisioning only). Thin clients keep the Horizon client; Teams stays optimized.</dd>
+          <dt>Home access</dt><dd>Horizon portal through Unified Access Gateway with Duo, as today.</dd>
+          <dt>Platform</dt><dd>Hyper-V failover cluster on the existing SAN, licensed by the 264 Windows Server 2022 Datacenter core licenses already owned (248 cores, then 240).</dd>
+        </dl>
+        <div class='cs'><div class='cs-row'><span>Windows Server CALs</span><span>$11,568</span></div><div class='cs-row'><span>Windows Server Datacenter (owned)</span><span>$0</span></div><div class='cs-row'><span>Horizon Enterprise</span><span>$163,759</span></div><div class='cs-row'><span>Windows VDA</span><span>$163,913</span></div><div class='cs-row'><span>SAN expansion</span><span>$20,200</span></div><div class='cs-row'><span>2 new hosts (Year 2)</span><span>$90,000</span></div><div class='cs-row'><span>Training</span><span>$3,000</span></div><div class='cs-row cs-total'><span>5-year total</span><span>$452,440</span></div></div>
+        <div class="pc"><div><h4>Strengths</h4><ul class="pros"><li>Users notice no change</li><li>Lowest five-year cost</li><li>No hypervisor subscription</li></ul></div>
+        <div><h4>Risks</h4><ul class="cons"><li>Omnissa's Hyper-V list still names Hyper-V 2016/2019; confirm 2022 in writing</li><li>Manual pools: no automated provisioning or power management</li><li>Horizon and VDA renew every year</li></ul></div></div>
+      </div>
+    </article>
+  </div>
+</div></section>
+
+<section id="costs"><div class="wrap">
+  <div class="eyebrow">4 · Costs</div>
+  <h2>Hyper-V + Horizon is lowest, by $35,845</h2>
+  <p class="deck">Five-year totals, Oct 2026 to Sep 2031, in US dollars and undiscounted. Recurring fees rise 3% a year; one-time purchases sit in the year they happen. Proxmox + Horizon is next; the whole gap is the Proxmox subscription and training. All three Horizon options use the Enterprise edition, so they compare like for like.</p>
+
+  <div class="chart" role="figure" aria-label="Five-year cost by option, split into four cost types">
+    <h3>Five-year cost, by what it pays for</h3>
+    <p class="small">Lowest first. Hover a segment for its value; the table below lists every figure.</p>
+    <div class="legend"><span class='lg'><span class='sw sw-plat'></span>Hypervisor platform</span><span class='lg'><span class='sw sw-desk'></span>Desktop broker and access</span><span class='lg'><span class='sw sw-vda'></span>Windows licensing (VDA, CALs)</span><span class='lg'><span class='sw sw-hw'></span>Hardware, storage and training</span></div>
+    <div class='crow'><div class='clabel'><span class='cname'>Hyper-V + Horizon ★</span><span class='cval'>$452,440</span></div><div class='ctrack'><span class='seg seg-desk first' style='width:18.887%' tabindex='0' data-tip='Hyper-V + Horizon · Desktop broker and access: $163,759' aria-label='Desktop broker and access $163,759'><span class='seg-lab'>$164k</span></span><span class='seg seg-vda' style='width:20.239%' tabindex='0' data-tip='Hyper-V + Horizon · Windows licensing (VDA, CALs): $175,481' aria-label='Windows licensing (VDA, CALs) $175,481'><span class='seg-lab'>$175k</span></span><span class='seg seg-hw last' style='width:13.056%' tabindex='0' data-tip='Hyper-V + Horizon · Hardware, storage and training: $113,200' aria-label='Hardware, storage and training $113,200'><span class='seg-lab'>$113k</span></span></div></div>
+<div class='crow'><div class='clabel'><span class='cname'>Proxmox VE + Horizon</span><span class='cval'>$488,285</span></div><div class='ctrack'><span class='seg seg-plat first' style='width:4.019%' tabindex='0' data-tip='Proxmox VE + Horizon · Hypervisor platform: $34,845' aria-label='Hypervisor platform $34,845'><span class='seg-lab'>$35k</span></span><span class='seg seg-desk' style='width:18.887%' tabindex='0' data-tip='Proxmox VE + Horizon · Desktop broker and access: $163,759' aria-label='Desktop broker and access $163,759'><span class='seg-lab'>$164k</span></span><span class='seg seg-vda' style='width:20.239%' tabindex='0' data-tip='Proxmox VE + Horizon · Windows licensing (VDA, CALs): $175,481' aria-label='Windows licensing (VDA, CALs) $175,481'><span class='seg-lab'>$175k</span></span><span class='seg seg-hw last' style='width:13.171%' tabindex='0' data-tip='Proxmox VE + Horizon · Hardware, storage and training: $114,200' aria-label='Hardware, storage and training $114,200'><span class='seg-lab'>$114k</span></span></div></div>
+<div class='crow'><div class='clabel'><span class='cname'>AVD on Azure Local</span><span class='cval'>$505,368</span></div><div class='ctrack'><span class='seg seg-plat first' style='width:18.248%' tabindex='0' data-tip='AVD on Azure Local · Hypervisor platform: $158,214' aria-label='Hypervisor platform $158,214'><span class='seg-lab'>$158k</span></span><span class='seg seg-desk' style='width:12.985%' tabindex='0' data-tip='AVD on Azure Local · Desktop broker and access: $112,586' aria-label='Desktop broker and access $112,586'><span class='seg-lab'>$113k</span></span><span class='seg seg-vda' style='width:1.334%' tabindex='0' data-tip='AVD on Azure Local · Windows licensing (VDA, CALs): $11,568' aria-label='Windows licensing (VDA, CALs) $11,568'><span class='seg-lab'>$12k</span></span><span class='seg seg-hw last' style='width:25.720%' tabindex='0' data-tip='AVD on Azure Local · Hardware, storage and training: $223,000' aria-label='Hardware, storage and training $223,000'><span class='seg-lab'>$223k</span></span></div></div>
+<div class='crow'><div class='clabel'><span class='cname'>VMware (stay)</span><span class='cval'>$590,481</span></div><div class='ctrack'><span class='seg seg-plat first' style='width:16.267%' tabindex='0' data-tip='VMware (stay) · Hypervisor platform: $141,041' aria-label='Hypervisor platform $141,041'><span class='seg-lab'>$141k</span></span><span class='seg seg-desk' style='width:18.887%' tabindex='0' data-tip='VMware (stay) · Desktop broker and access: $163,759' aria-label='Desktop broker and access $163,759'><span class='seg-lab'>$164k</span></span><span class='seg seg-vda' style='width:20.239%' tabindex='0' data-tip='VMware (stay) · Windows licensing (VDA, CALs): $175,481' aria-label='Windows licensing (VDA, CALs) $175,481'><span class='seg-lab'>$175k</span></span><span class='seg seg-hw last' style='width:12.710%' tabindex='0' data-tip='VMware (stay) · Hardware, storage and training: $110,200' aria-label='Hardware, storage and training $110,200'><span class='seg-lab'>$110k</span></span></div></div>
+<div class='crow'><div class='clabel'><span class='cname'>AVD in the cloud</span><span class='cval'>$867,043</span></div><div class='ctrack'><span class='seg seg-desk first' style='width:93.337%' tabindex='0' data-tip='AVD in the cloud · Desktop broker and access: $809,275' aria-label='Desktop broker and access $809,275'><span class='seg-lab'>$809k</span></span><span class='seg seg-vda' style='width:1.334%' tabindex='0' data-tip='AVD in the cloud · Windows licensing (VDA, CALs): $11,568' aria-label='Windows licensing (VDA, CALs) $11,568'><span class='seg-lab'>$12k</span></span><span class='seg seg-hw last' style='width:5.328%' tabindex='0' data-tip='AVD in the cloud · Hardware, storage and training: $46,200' aria-label='Hardware, storage and training $46,200'><span class='seg-lab'>$46k</span></span></div></div>
+    <div class="axis"><div></div><div class="axis-t"><span style='left:0.00%'>$0k</span><span style='left:23.07%'>$200k</span><span style='left:46.13%'>$400k</span><span style='left:69.20%'>$600k</span><span style='left:92.27%'>$800k</span></div></div>
+  </div>
+
+  <div class="tbl-wrap"><table class="num">
+    <thead><tr><th>Option</th><th>Year 1</th><th>Year 2</th><th>Year 3</th><th>Year 4</th><th>Year 5</th><th>5-year total</th><th>vs VMware</th></tr></thead>
+    <tbody><tr class='rec'><td><span class='dot dot-win'></span>Hyper-V + Horizon ★</td><td>$96,487</td><td>$153,570</td><td>$65,477</td><td>$67,441</td><td>$69,465</td><td class='tot'>$452,440</td><td class='vs '>$138,041 less</td></tr>
+<tr class=''><td><span class='dot dot-prox'></span>Proxmox VE + Horizon</td><td>$105,077</td><td>$160,085</td><td>$72,187</td><td>$74,352</td><td>$76,584</td><td class='tot'>$488,285</td><td class='vs '>$102,196 less</td></tr>
+<tr class=''><td><span class='dot dot-azl'></span>AVD on Azure Local</td><td>$285,574</td><td>$52,537</td><td>$54,112</td><td>$55,736</td><td>$57,409</td><td class='tot'>$505,368</td><td class='vs '>$85,113 less</td></tr>
+<tr class=''><td><span class='dot dot-vm'></span>VMware (stay)</td><td>$120,767</td><td>$180,762</td><td>$93,485</td><td>$96,289</td><td>$99,178</td><td class='tot'>$590,481</td><td class='vs '>—</td></tr>
+<tr class=''><td><span class='dot dot-azure'></span>AVD in the cloud</td><td>$210,199</td><td>$157,003</td><td>$161,715</td><td>$166,564</td><td>$171,562</td><td class='tot'>$867,043</td><td class='vs neg'>$276,562 more</td></tr></tbody>
+  </table></div>
+  <details>
+    <summary>Show every line item</summary>
+    <div class="tbl-wrap"><table class="num">
+      <thead><tr><th>Line item</th><th>Year 1</th><th>Year 2</th><th>Year 3</th><th>Year 4</th><th>Year 5</th><th>5-year total</th></tr></thead>
+      <tbody><tr class='grp grp-win'><td colspan='7'>Hyper-V + Horizon</td></tr>
+<tr><td>Windows Server CALs (241 users × $48)</td><td>$11,568</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$11,568</td></tr>
+<tr><td>Windows Server Datacenter, 264 cores (already owned)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$0</td></tr>
+<tr><td>Omnissa Horizon Enterprise (240 users × $10.71/mo)</td><td>$30,845</td><td>$31,770</td><td>$32,723</td><td>$33,705</td><td>$34,716</td><td class='tot'>$163,759</td></tr>
+<tr><td>Windows VDA (240 thin clients × $128.64/yr)</td><td>$30,874</td><td>$31,800</td><td>$32,754</td><td>$33,736</td><td>$34,749</td><td class='tot'>$163,913</td></tr>
+<tr><td>Storage: +16 TB usable on the SAN (7 × 3.84 TB SSD, RAID 6)</td><td>$20,200</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$20,200</td></tr>
+<tr><td>2 replacement hosts (Year 2)</td><td>—</td><td>$90,000</td><td>—</td><td>—</td><td>—</td><td class='tot'>$90,000</td></tr>
+<tr><td>Hyper-V and failover-cluster training (est.)</td><td>$3,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$3,000</td></tr>
+<tr class='sub'><td>Total</td><td>$96,487</td><td>$153,570</td><td>$65,477</td><td>$67,441</td><td>$69,465</td><td class='tot'>$452,440</td></tr>
+<tr class='grp grp-prox'><td colspan='7'>Proxmox VE + Horizon</td></tr>
+<tr><td>Windows Server CALs (241 users × $48)</td><td>$11,568</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$11,568</td></tr>
+<tr><td>Windows Server Datacenter, 264 cores (already owned)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$0</td></tr>
+<tr><td>Proxmox VE Standard (sockets × €550/yr)</td><td>$7,590</td><td>$6,515</td><td>$6,710</td><td>$6,911</td><td>$7,119</td><td class='tot'>$34,845</td></tr>
+<tr><td>Omnissa Horizon Enterprise (240 users × $10.71/mo)</td><td>$30,845</td><td>$31,770</td><td>$32,723</td><td>$33,705</td><td>$34,716</td><td class='tot'>$163,759</td></tr>
+<tr><td>Windows VDA (240 thin clients × $128.64/yr)</td><td>$30,874</td><td>$31,800</td><td>$32,754</td><td>$33,736</td><td>$34,749</td><td class='tot'>$163,913</td></tr>
+<tr><td>Storage: +16 TB usable on the SAN (7 × 3.84 TB SSD, RAID 6)</td><td>$20,200</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$20,200</td></tr>
+<tr><td>2 replacement hosts (Year 2)</td><td>—</td><td>$90,000</td><td>—</td><td>—</td><td>—</td><td class='tot'>$90,000</td></tr>
+<tr><td>Proxmox and Linux training (est.)</td><td>$4,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$4,000</td></tr>
+<tr class='sub'><td>Total</td><td>$105,077</td><td>$160,085</td><td>$72,187</td><td>$74,352</td><td>$76,584</td><td class='tot'>$488,285</td></tr>
+<tr class='grp grp-azl'><td colspan='7'>AVD on Azure Local</td></tr>
+<tr><td>Windows Server CALs (241 users × $48)</td><td>$11,568</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$11,568</td></tr>
+<tr><td>Windows Server Datacenter, 264 cores (already owned)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$0</td></tr>
+<tr><td>Azure Local host fee (240 cores × $10/mo)</td><td>$28,800</td><td>$29,664</td><td>$30,554</td><td>$31,471</td><td>$32,415</td><td class='tot'>$152,904</td></tr>
+<tr><td>AVD on Azure Local (480 vCPU × business hours × $0.01)</td><td>$15,206</td><td>$15,663</td><td>$16,132</td><td>$16,616</td><td>$17,115</td><td class='tot'>$80,732</td></tr>
+<tr><td>Azure monitoring (est.)</td><td>$1,000</td><td>$1,030</td><td>$1,061</td><td>$1,093</td><td>$1,126</td><td class='tot'>$5,310</td></tr>
+<tr><td>Backup internet line for logins, about $500/mo (est.)</td><td>$6,000</td><td>$6,180</td><td>$6,365</td><td>$6,556</td><td>$6,753</td><td class='tot'>$31,854</td></tr>
+<tr><td>2 new nodes at $45,000 (2× 24-core, 768 GB)</td><td>$90,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$90,000</td></tr>
+<tr><td>35 × 3.84 TB NVMe drives at $2,600</td><td>$91,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$91,000</td></tr>
+<tr><td>RDMA NICs for 3 SR650 V3 + 2 switches (est.)</td><td>$33,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$33,000</td></tr>
+<tr><td>Azure Local and AVD training (est.)</td><td>$9,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$9,000</td></tr>
+<tr class='sub'><td>Total</td><td>$285,574</td><td>$52,537</td><td>$54,112</td><td>$55,736</td><td>$57,409</td><td class='tot'>$505,368</td></tr>
+<tr class='grp grp-vm'><td colspan='7'>VMware (stay)</td></tr>
+<tr><td>Windows Server CALs (241 users × $48)</td><td>$11,568</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$11,568</td></tr>
+<tr><td>Windows Server Datacenter, 264 cores (already owned)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$0</td></tr>
+<tr><td>vSphere subscription (cores × $110/yr)</td><td>$27,280</td><td>$27,192</td><td>$28,008</td><td>$28,848</td><td>$29,713</td><td class='tot'>$141,041</td></tr>
+<tr><td>Omnissa Horizon Enterprise (240 users × $10.71/mo)</td><td>$30,845</td><td>$31,770</td><td>$32,723</td><td>$33,705</td><td>$34,716</td><td class='tot'>$163,759</td></tr>
+<tr><td>Windows VDA (240 thin clients × $128.64/yr)</td><td>$30,874</td><td>$31,800</td><td>$32,754</td><td>$33,736</td><td>$34,749</td><td class='tot'>$163,913</td></tr>
+<tr><td>Storage: +16 TB usable on the SAN (7 × 3.84 TB SSD, RAID 6)</td><td>$20,200</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$20,200</td></tr>
+<tr><td>2 replacement hosts (Year 2)</td><td>—</td><td>$90,000</td><td>—</td><td>—</td><td>—</td><td class='tot'>$90,000</td></tr>
+<tr class='sub'><td>Total</td><td>$120,767</td><td>$180,762</td><td>$93,485</td><td>$96,289</td><td>$99,178</td><td class='tot'>$590,481</td></tr>
+<tr class='grp grp-azure'><td colspan='7'>AVD in the cloud</td></tr>
+<tr><td>Windows Server CALs (241 users × $48)</td><td>$11,568</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$11,568</td></tr>
+<tr><td>Windows Server Datacenter, 264 cores (already owned)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$0</td></tr>
+<tr><td>Desktop VMs: 240 × D2s_v5 at $0.096/h, 12 h × 22 days a month</td><td>$72,991</td><td>$75,180</td><td>$77,436</td><td>$79,759</td><td>$82,152</td><td class='tot'>$387,518</td></tr>
+<tr><td>Desktop disks: 240 × 128 GB Premium SSD at $19.71/mo, always on</td><td>$56,765</td><td>$58,468</td><td>$60,222</td><td>$62,028</td><td>$63,889</td><td class='tot'>$301,372</td></tr>
+<tr><td>Site-to-site VPN gateway at $0.49/h, always on</td><td>$4,292</td><td>$4,421</td><td>$4,554</td><td>$4,690</td><td>$4,831</td><td class='tot'>$22,788</td></tr>
+<tr><td>Data egress: 13.5 GB per user per month at $0.087/GB</td><td>$3,383</td><td>$3,484</td><td>$3,589</td><td>$3,696</td><td>$3,807</td><td class='tot'>$17,959</td></tr>
+<tr><td>Azure operations and monitoring (est.)</td><td>$3,000</td><td>$3,090</td><td>$3,183</td><td>$3,278</td><td>$3,377</td><td class='tot'>$15,928</td></tr>
+<tr><td>Second internet circuit, about $1,000/mo (est.)</td><td>$12,000</td><td>$12,360</td><td>$12,731</td><td>$13,113</td><td>$13,506</td><td class='tot'>$63,710</td></tr>
+<tr><td>Server-host storage: 12 × 3.84 TB drives + 3 RDMA NICs</td><td>$40,200</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$40,200</td></tr>
+<tr><td>Hyper-V and AVD training (est.)</td><td>$6,000</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='tot'>$6,000</td></tr>
+<tr class='sub'><td>Total</td><td>$210,199</td><td>$157,003</td><td>$161,715</td><td>$166,564</td><td>$171,562</td><td class='tot'>$867,043</td></tr></tbody>
+    </table></div>
+  </details>
+
+  <div class="trio">
+    <div class="note blue"><b>Horizon and VDA are the same on-site</b><span>VMware, Proxmox and Hyper-V each pay $163,759 for Horizon and $163,913 for VDA, so neither changes their order. Both are in the totals because the Azure options need neither.</span></div>
+    <div class="note green"><b>Left out because every option has it</b><span>Business Premium, Duo, backup, thin clients and MSP support. Windows Server CALs and the owned Datacenter licenses appear in every option's breakdown.</span></div>
+    <div class="note amber"><b>Not in any total</b><span>Migration labor and any overlap with the expiring VMware licenses (a separate project budget), power and cooling, and disaster recovery.</span></div>
+  </div>
+
+  <h3>Beyond cost</h3>
+  <div class="tbl-wrap"><table class="score">
+    <thead><tr><th></th><th class="rec">Hyper-V + Horizon ★</th><th>Proxmox + Horizon</th><th>AVD on Azure Local</th><th>VMware</th><th>AVD in the cloud</th></tr></thead>
+    <tbody>
+      <tr><td>Teams calls</td><td class="rec yes">Optimized</td><td class="yes">Optimized</td><td class="yes">Optimized</td><td class="yes">Optimized</td><td class="yes">Optimized</td></tr>
+      <tr><td>What users notice</td><td class="rec">Nothing</td><td>Nothing</td><td>New client and portal</td><td>Nothing</td><td>New client and portal</td></tr>
+      <tr><td>Desktop broker support</td><td class="rec mid">Horizon, documented for Hyper-V 2016/2019</td><td>Horizon, certified</td><td>Microsoft</td><td>Horizon, native</td><td>Microsoft</td></tr>
+      <tr><td>Desktop automation</td><td class="rec mid">Manual pools</td><td class="mid">Manual pools</td><td>Start on connect, image tools</td><td>Automated pools</td><td>Start on connect, image tools</td></tr>
+      <tr><td>New skills for one admin</td><td class="rec">Hyper-V clustering</td><td class="mid">Linux, Proxmox</td><td class="mid">Azure Local, Arc, AVD</td><td>None</td><td>Azure, AVD</td></tr>
+      <tr><td>Outside dependency</td><td class="rec">None</td><td>None</td><td class="mid">Internet for every login</td><td>None</td><td class="mid">Internet for every session</td></tr>
+      <tr><td>Year 1 spend</td><td class="rec">$96,487</td><td>$105,077</td><td>$285,574</td><td>$120,767</td><td>$210,199</td></tr>
+      <tr><td>Year 5 run rate</td><td class="rec">$69,465</td><td>$76,584</td><td>$57,409</td><td>$99,178</td><td>$171,562</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>What would change the answer</h3>
+  <p class="small" style="margin-bottom:12px">One input changed at a time. Hyper-V + Horizon stays lowest in all 12 cases, and cloud AVD stays highest.</p>
+  <div class="tbl-wrap"><table class="num">
+    <thead><tr><th>Change</th><th class="l">Affects</th><th>5-year change</th><th class="l">New total</th><th class="l">Lowest after the change</th></tr></thead>
+    <tbody><tr><td>Host, drive and switch prices ±25% (memory and flash prices are volatile)</td><td class='l'>All options</td><td>±$27,550 (Azure Local ±$53,500)</td><td class='l'>Hyper-V $424,890 – $479,990; Azure Local $451,868 – $558,868</td><td class='l'>+25%: Hyper-V + Horizon, then Proxmox VE + Horizon. −25%: Hyper-V + Horizon, then AVD on Azure Local</td></tr>
+<tr><td>Half the thin clients (120) need replacing to run the AVD client, at $500 each</td><td class='l'>Both AVD options</td><td>+$60,000 each</td><td class='l'>AVD in the cloud $927,043; AVD on Azure Local $565,368</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>Horizon +20% (new licenses without vSphere rose 16–21% in May 2026)</td><td class='l'>VMware, Proxmox, Hyper-V</td><td>+$32,752 each</td><td class='l'>VMware $623,233; Proxmox $521,037; Hyper-V $485,192</td><td class='l'>Hyper-V + Horizon, then AVD on Azure Local</td></tr>
+<tr><td>Azure Local and AVD fees +20%</td><td class='l'>AVD on Azure Local</td><td>+$46,727</td><td class='l'>$552,095</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>Azure Local backup line at $12,000 a year, like cloud AVD, instead of $6,000</td><td class='l'>AVD on Azure Local</td><td>+$31,855</td><td class='l'>$537,223</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>Windows VDA at Microsoft&#x27;s $100 list instead of $128.64</td><td class='l'>VMware, Proxmox, Hyper-V</td><td>−$36,493 each</td><td class='l'>VMware $553,988; Proxmox $451,792; Hyper-V $415,947</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>vSphere at $138 or $190 per core instead of the $110 bundle estimate</td><td class='l'>VMware</td><td>+$35,901 / +$102,575</td><td class='l'>VMware $626,382 / $693,056</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>vSphere price rises 10% a year instead of 3%</td><td class='l'>VMware</td><td>+$21,014</td><td class='l'>$611,495</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>Proxmox Premium (€1,100 per socket) instead of Standard</td><td class='l'>Proxmox</td><td>+$34,845</td><td class='l'>$523,130</td><td class='l'>Hyper-V + Horizon, then AVD on Azure Local</td></tr>
+<tr><td>Servers need more RAM than modeled: one extra host from Year 1, with its licenses</td><td class='l'>All but AVD cloud</td><td>Hyper-V +$55,156; Proxmox +$61,872; AVD on Azure Local +$103,937; VMware +$83,188</td><td class='l'>Hyper-V $507,596; Proxmox $550,157; AVD on Azure Local $609,305; VMware $673,669</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr>
+<tr><td>Cloud desktops run 10 hours a day instead of 12</td><td class='l'>AVD cloud</td><td>−$64,586</td><td class='l'>$802,457</td><td class='l'>Hyper-V + Horizon, then Proxmox VE + Horizon</td></tr></tbody>
+  </table></div>
+</div></section>
+
+<section id="outlook"><div class="wrap">
+  <div class="eyebrow">5 · Looking ahead</div>
+  <h2>The dates that drive the next five years</h2>
+  <div class="two">
+    <ol class="tl">
+      <li><div class="when">Now</div><b>14 hosts run unsupported ESXi 7</b><span>Technical guidance ends 2 Apr 2027; the migration should finish before then.</span></li>
+      <li><div class="when">Jul – Oct 2027</div><b>Old Teams optimization retires on Windows devices</b><span>On Horizon, support ends 1 Jul 2027 and it stops working 1 Oct 2027 (on AVD, 1 Apr 2027). Linux-based thin clients keep the current optimization until Microsoft ships a Linux version; Windows-based thin clients and home PCs need a current Horizon client.</span></li>
+      <li><div class="when">11 Oct 2027</div><b>vSphere 8 general support ends</b><span>Staying on VMware means upgrading to vSphere 9 by the start of Year 2.</span></li>
+      <li><div class="when">Mar – Jun 2028</div><b>Gen10 and SR650 reach end of service</b><span>VMware, Proxmox and Hyper-V buy two hosts in Year 2 ($90,000); Azure Local retires them in Year 1.</span></li>
+      <li><div class="when">14 Oct 2031</div><b>Windows Server 2022 extended support ends</b><span>Just after this window: the server VMs in every option, and the Hyper-V hosts, move to a newer Windows Server.</span></li>
+    </ol>
+    <div class="outlook">
+      <div class="ol"><b>Hardware:</b> server memory roughly doubled in price in early 2026, and no relief is expected before late 2027. Quote the Year-2 hosts early.</div>
+      <div class="ol"><b>Omnissa Horizon:</b> prices for new licenses without vSphere rose 16–21% in May 2026. Horizon is in three of the five options.</div>
+      <div class="ol"><b>VMware:</b> quote-only pricing with a history of steep increases. Year 5 costs $99,178.</div>
+      <div class="ol"><b>Azure:</b> published rates can change; Azure Local's fees are mostly per core and per desktop hour. Year 5 costs $57,409 on Azure Local.</div>
+    </div>
+  </div>
+</div></section>
+
+<section id="recommendation"><div class="wrap">
+  <div class="recbox">
+    <div class="eyebrow">6 · Recommendation</div>
+    <h2>Hyper-V + Horizon costs the least, with two strong alternatives</h2>
+    <p class="deck">All three Horizon options keep Teams optimized and change nothing for users. They differ in five-year cost, in how much hands-on work the desktops need, and in how much has to be migrated.</p>
+    <div class="rstats">
+      <div class="rstat"><div class="rstat-v">$452,440</div><div class="rstat-l">Hyper-V + Horizon · lowest cost</div></div>
+      <div class="rstat"><div class="rstat-v">$488,285</div><div class="rstat-l">Proxmox + Horizon · certified by Omnissa</div></div>
+      <div class="rstat"><div class="rstat-v">$590,481</div><div class="rstat-l">VMware · no migration</div></div>
+    </div>
+    <p><b>Hyper-V + Horizon: lowest cost, more hands-on work.</b> It reuses the Windows Server Datacenter licenses and SAN already owned, so there's no hypervisor subscription, and it costs $138,041 less than staying on VMware. The trade-off is how desktops are managed. On Hyper-V, Horizon works through manual pools: every desktop is built, patched and kept running from templates and scripts outside Horizon, with no instant clones or automatic power management. For a one-person team, that's ongoing work the current setup handles automatically.</p>
+    <p><b>Proxmox + Horizon: the certified alternative.</b> It costs $35,845 more, for the Proxmox subscription and training. In return, Omnissa certified Proxmox under its Horizon Ready program in September 2026, so Horizon on Proxmox has a vendor-backed support path. Proxmox is open source, thoroughly documented and backed by a large community, and its templates, cloning and full API make building desktops at scale easier. Its pools are manual too, so it suits a team that values certified support and documentation over the lowest price.</p>
+    <p><b>Staying on VMware: no migration.</b> It costs $138,041 more over five years, but nothing moves. There are no 280 VMs to rebuild or convert and no retraining, and Horizon keeps its automated pools and power management. Migration labor isn't in any total, so the real gap is smaller than the numbers show. It's the right call if the team can't take on a migration in the next year.</p>
+    <p>The Azure options cost more ($505,368 on Azure Local, $867,043 in the cloud) and give every user a new client and portal.</p>
+    <h4>Before committing</h4>
+    <ol>
+      <li>Estimate the migration effort for Hyper-V and Proxmox, in internal hours or a partner quote, and weigh it against staying on VMware.</li>
+      <li>Pilot ten users on the chosen platform: Teams calls, peripherals, and home access with Duo.</li>
+      <li>Confirm each thin-client model has a supported Horizon client with Teams optimization.</li>
+      <li>License Windows VDA for the 240 thin clients, and add 16 TB usable to the SAN.</li>
+      <li>Quote the two Year-2 hosts early, since memory prices are volatile.</li>
+    </ol>
+  </div>
+</div></section>
+
+<section id="assumptions"><div class="wrap">
+  <div class="eyebrow">7 · Assumptions and sources</div>
+  <h2>Where every number comes from</h2>
+  <p class="deck">Prices checked between 27 Sep and 9 Oct 2026. Items marked estimate have no published price and are tested in the sensitivity table.</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Input</th><th>Value used</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Workload</td><td>240 users (232 assigned + 8 floating desktops), 240 thin clients, 40 server VMs, 1 administrator plus an MSP. Desktop 2 vCPU / 8 GB; server 4 vCPU / 16 GB. Storage 16 TB today, 32 TB planned.</td><td>Organization (anonymized)</td></tr>
+      <tr><td>Teams optimization</td><td>Supported on AVD/Windows 365, Citrix, Omnissa Horizon and Amazon WorkSpaces. WebRTC optimization retires on Windows endpoints: Horizon end of support 1 Jul 2027, end of availability 1 Oct 2027 (AVD/Citrix 1 Oct 2026 and 1 Apr 2027). Linux-based thin clients aren't affected</td><td><a href="https://learn.microsoft.com/en-us/microsoftteams/teams-client-vdi-requirements-deploy">Microsoft Learn</a>, <a href="https://learn.microsoft.com/nl-nl/MicrosoftTeams/vdi-2">Microsoft Learn (platforms)</a></td></tr>
+      <tr><td>Horizon on other hypervisors</td><td>Manual pools only: no automated provisioning, instant clones or power management. Omnissa's Hyper-V page lists Hyper-V Server 2016/2019 and Windows 11 21H2/22H2 desktops, plus Windows Server 2025 RDS hosts on Hyper-V 2022 or later; no vGPU or HEVC on Hyper-V. Proxmox VE certified Horizon Ready (manual mode), Sept 2026</td><td><a href="https://docs.omnissa.com/Desktops-and-Applications-in-Horizon-V2603/RunningWindowsVirtualMachinesonHyperV">Omnissa docs</a>, <a href="https://techzone.omnissa.com/resource/horizon-ready-hypervisor">Omnissa TechZone</a>, <a href="https://proxmox.com/en/about/company-details/press-releases/proxmox-ve-omnissa-horizon-ready">proxmox.com</a></td></tr>
+      <tr><td>Omnissa Horizon</td><td>Horizon Enterprise Plus, $10.71 per user per month (reported), used for all three Horizon options so they compare like for like. Horizon Standard bundled with vSphere for desktop hosts ($3,219 per 10 named users for 3 years) would lower VMware to about $524,346, with desktops and servers on separate hosts. New licenses without vSphere rose 16–21% in May 2026</td><td><a href="https://www.venn.com/learn/vmware-horizon-pricing/">venn.com</a>, <a href="https://www.shi.com/product/51298467/Omnissa-Horizon-Standard-Edition-with-VVF-for-VDI-Edition">shi.com</a>, <a href="https://www.oplee.com/omnissa-horizon-and-vmware-vsphere-foundation-for-vdi-combined-offerings-explained">oplee.com</a>, <a href="https://www.schneider.im/omnissa-horizon-price-adjustments-new-omnissa-licenses/">schneider.im</a></td></tr>
+      <tr><td>VMware vSphere</td><td>$110 per core per year, bundle estimate (advisor list $135–$190); 16-core minimum per CPU; Skylake supported only in deprecated mode in vSphere 9</td><td><a href="https://acemq.com/blogs/vmware-licensing-cost/">acemq.com</a>, <a href="https://knowledge.broadcom.com/external/article/428874/deprecated-cpu-systems-servers-in-esx-9.html">Broadcom KB 428874</a></td></tr>
+      <tr><td>vSphere support dates</td><td>vSphere 7 general support ended 2 Oct 2025; vSphere 8 ends 11 Oct 2027</td><td><a href="https://blogs.vmware.com/cloud-foundation/2025/03/31/reminder-vsphere-7-to-reach-end-of-service-october-2-2025/">blogs.vmware.com</a>, <a href="https://www.riministreet.com/blog/facing-vmware-vsphere-7-end-of-support-heres-what-it-means-and-how-rimini-street-can-help/">riministreet.com</a></td></tr>
+      <tr><td>Host end of service</td><td>HPE DL380 Gen9: 22 Jul 2025. HPE DL380 Gen10: Mar 2028. Lenovo SR650 (7X06): 30 Apr or 30 Jun 2028</td><td><a href="https://www.parkplacetechnologies.com/eosl/hpe/proliant-dl380g9/">parkplacetechnologies.com</a>, <a href="https://relutech.com/eol-eosl/hpe/proliant-dl-380-gen10-server">relutech.com</a>, <a href="https://www.servnetuk.com/server-end-of-life/lenovo-thinksystem-sr650-sr630">servnetuk.com</a></td></tr>
+      <tr><td>New host or node</td><td>$45,000 for 2× 24-core, 768 GB, estimate; 64 GB DDR5 server memory about $2,245 per module (Oct 2026)</td><td><a href="https://capitalandcompute.net/memory-prices/server/">capitalandcompute.net</a>, <a href="https://pcserverandparts.com/news/how-much-does-a-server-cost-2026/">pcserverandparts.com</a></td></tr>
+      <tr><td>Storage</td><td>SAN expansion +16 TB usable: 7 × 3.84 TB SSD in RAID 6 plus fitting, $20,200, estimate; 3.84 TB enterprise SSD $2,600 each; Azure Local RDMA NICs $3,000 per node and 2 switches $24,000, estimates. Cloud AVD: 12 drives in the server hosts for about 8 TB of server data</td><td><a href="https://datacenterdisk.com/nvme-u2/3-84tb/micron">datacenterdisk.com</a>, <a href="https://www.theregister.com/2026/01/14/dram_infrastructure_costs/">theregister.com</a></td></tr>
+      <tr><td>Proxmox VE</td><td>Standard €550 per socket per year (Premium €1,100); EUR/USD 1.15</td><td><a href="https://www.proxmox.com/en/products/proxmox-virtual-environment/pricing">proxmox.com</a></td></tr>
+      <tr><td>Windows VDA</td><td>$128.64 per thin client per year (Microsoft list $100). Needed for on-site VDI; Business Premium covers Azure-hosted desktops only</td><td><a href="https://www.mirazon.com/how-do-i-license-virtual-desktops-for-windows/">mirazon.com</a>, <a href="https://support.xtium.com/x/WPI-Bw">xtium.com</a></td></tr>
+      <tr><td>Windows Server</td><td>264 Datacenter 2022 core licenses owned (volume, no SA), shown at $0. Server CALs $48 each, estimate; if they're already owned, every option drops by the same $11,568</td><td><a href="https://www.microsoft.com/en-us/windows-server/pricing">microsoft.com</a></td></tr>
+      <tr><td>Azure desktops (B1)</td><td>D2s_v5 $0.096/h for 12 h × 22 days; P10 disk $19.71/month; VPN $0.49/h; egress 13.5 GB per user per month at $0.087/GB; operations $3,000/yr; second internet circuit $12,000/yr, estimate</td><td><a href="https://www.economize.cloud/resources/azure/pricing/virtual-machine/d8sv5/">economize.cloud</a>, <a href="https://azure.microsoft.com/en-us/pricing/details/virtual-desktop/">azure.microsoft.com</a></td></tr>
+      <tr><td>Azure Local (B2)</td><td>$10 per physical core per month; AVD on Azure Local $0.01 per vCPU-hour; logins brokered by the AVD service in Azure; backup internet line $6,000/yr, estimate</td><td><a href="https://getnerdio.com/azure-local/">getnerdio.com</a>, <a href="https://learn.microsoft.com/id-id/azure/virtual-desktop/azure-local-overview">Microsoft Learn</a></td></tr>
+      <tr><td>Duo for Azure options</td><td>Duo as an Entra ID external MFA method (needs Entra ID P1, included in Business Premium)</td><td><a href="https://duo.com/docs/microsoft-mfa">duo.com</a></td></tr>
+    </tbody>
+  </table></div>
+  <p class="small" style="margin-top:14px;max-width:880px">Formulas: recurring cost in year <i>y</i> = Year 1 cost × 1.03<sup>y−1</sup>. VMware cores = Σ max(16, cores per CPU). Proxmox counts sockets. Windows Server cores = per host max(16, Σ max(8, cores per CPU)). Capacity: RAM used with the largest host down, at 90% usable (85% on Azure Local). Azure Local usable storage = (raw − one drive per node) ÷ 3. The Year-2 hosts are in service from the start of Year 2.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap"><b>Anonymized case study.</b> Hardware and figures are representative; the method reflects the original analysis. Prices are published list prices, reported prices or labeled estimates; negotiated prices will differ. Confirm license entitlements and quotes with vendors before acting.</div></footer>
+
+<div class="tip" id="tip" role="tooltip"></div>
+<script>
+(function(){
+  var tip=document.getElementById('tip');
+  function show(el,x,y){tip.textContent=el.getAttribute('data-tip');tip.style.opacity=1;
+    var w=tip.offsetWidth,h=tip.offsetHeight;var left=Math.min(x+14,window.innerWidth-w-8);var top=y-h-12;if(top<8)top=y+16;
+    tip.style.left=left+'px';tip.style.top=top+'px';}
+  document.querySelectorAll('.seg').forEach(function(s){
+    s.addEventListener('mousemove',function(ev){show(s,ev.clientX,ev.clientY);});
+    s.addEventListener('mouseleave',function(){tip.style.opacity=0;});
+    s.addEventListener('focus',function(){var r=s.getBoundingClientRect();show(s,r.left+r.width/2,r.top);});
+    s.addEventListener('blur',function(){tip.style.opacity=0;});
+  });
+  function fit(){document.querySelectorAll('.seg-lab').forEach(function(l){l.style.visibility='visible';
+    if(l.scrollWidth>l.parentNode.clientWidth-6)l.style.visibility='hidden';});}
+  fit();window.addEventListener('resize',fit);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+  var links=[].slice.call(document.querySelectorAll('nav a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function spy(){var y=window.scrollY+80,cur=0;secs.forEach(function(s,i){if(s&&s.offsetTop<=y)cur=i;});
+    links.forEach(function(a,i){a.classList.toggle('on',i===cur&&window.scrollY>200);});}
+  window.addEventListener('scroll',spy,{passive:true});spy();
+  window.addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true;});});
+})();
+</script>
+</body>
+</html>
